@@ -1,5 +1,12 @@
 use queue::*;
 
+const ROOM_SEARCH_ORDER : [[usize ; 3] ; 4] = [[1, 2, 3],   //room0
+                                               [1, 2, 3],   //room1
+                                               [1, 2, 3],   //room2
+                                               [1, 2, 3]];  //room3
+
+const AMOUNT_OF_ROOMS : usize = 3;
+
 enum NodeIndex {
     Middle,
     Node1,
@@ -13,6 +20,26 @@ enum NodeIndex {
     Room3,
     Room4,
     Last,
+}
+
+#[derive(PartialEq)]
+enum ScanSettings {
+    NoScan,
+    Scan,
+    Done,
+}
+
+struct PathPoint {
+    pub x : i32,
+    pub y : i32,
+    pub scan_settings : ScanSettings,
+    pub angle : f32,
+}
+
+impl PathPoint {
+    fn new(x: i32, y:i32, scan_settings : ScanSettings, angle : f32) -> PathPoint {
+        return PathPoint { x: x, y: y, scan_settings : scan_settings, angle : angle};
+    }
 }
 
 struct Point {
@@ -35,6 +62,9 @@ struct Node {
     pub previous: usize,
     pub index: usize,
     pub visited: bool,
+    pub scan_settings: ScanSettings,
+    pub scan_angle: f32,
+    pub scanned: bool,
 }
 
 impl Node {
@@ -47,6 +77,8 @@ impl Node {
         upp_left_y: i32,
         low_right_x: i32,
         low_right_y: i32,
+        scan_settings: ScanSettings,
+        scan_angle: f32,
         neighbours: Vec<usize>,
     ) -> Node {
         return Node {
@@ -58,6 +90,9 @@ impl Node {
             name: name,
             previous: usize::MAX,
             visited: false,
+            scan_settings: scan_settings,
+            scan_angle: scan_angle,
+            scanned: false,
         };
     }
 
@@ -89,10 +124,6 @@ impl Node {
         self.previous = previous;
     }
 
-    pub fn get_previous(&self) -> usize {
-        return self.previous;
-    }
-
     pub fn in_bounds(&self, x: i32, y: i32) -> bool {
         return self.bound_upp_left.x <= x
             && x <= self.bound_low_right.x
@@ -104,17 +135,27 @@ impl Node {
 struct NodeMap {
     nodes: Vec<Node>,
     rooms: Vec<usize>,
+    global_path: Vec<PathPoint>,
+    start_x: i32,
+    start_y: i32,
+    cur_path_index: i32,
 }
 
 impl NodeMap {
-    fn new() -> NodeMap {
+    fn new(x: i32, y:i32) -> NodeMap {
         return NodeMap {
             nodes: Vec::new(),
             rooms: Vec::new(),
+            global_path: Vec::new(),
+            start_x: x,
+            start_y: y,
+            cur_path_index: 0,
         };
     }
 
     fn init(&mut self) {
+        self.global_path = vec![];
+        //Creating the nodes
         self.nodes = vec![
             Node::new(
                 "Middle".into(),
@@ -125,6 +166,8 @@ impl NodeMap {
                 -1,
                 -1,
                 -1,
+                ScanSettings::NoScan,
+                0.0,
                 vec![
                     NodeIndex::Node1 as usize,
                     NodeIndex::Node3 as usize,
@@ -132,141 +175,27 @@ impl NodeMap {
                     NodeIndex::Node5 as usize,
                 ],
             ),
-            Node::new(
-                "Node 1".into(),
-                1,
-                935,
-                2165,
-                700,
-                2400,
-                2400,
-                1930,
-                vec![NodeIndex::Middle as usize],
-            ),
-            Node::new(
-                "Node 2".into(),
-                2,
-                2160,
-                1140,
-                1920,
-                1930,
-                2400,
-                900,
-                vec![NodeIndex::Node3 as usize],
-            ),
-            Node::new(
-                "Node 3".into(),
-                3,
-                1405,
-                1140,
-                1170,
-                1380,
-                1920,
-                900,
-                vec![
-                    NodeIndex::Middle as usize,
-                    NodeIndex::Node2 as usize,
-                    NodeIndex::Room1 as usize,
-                ],
-            ),
-            Node::new(
-                "Node 4".into(),
-                4,
-                235,
-                1255,
-                0,
-                1490,
-                710,
-                1020,
-                vec![NodeIndex::Middle as usize, NodeIndex::Room2 as usize],
-            ),
-            Node::new(
-                "Node 5".into(),
-                5,
-                945,
-                670,
-                710,
-                900,
-                1180,
-                440,
-                vec![
-                    NodeIndex::Middle as usize,
-                    NodeIndex::Node6 as usize,
-                    NodeIndex::Room4 as usize,
-                ],
-            ),
-            Node::new(
-                "Node 6".into(),
-                6,
-                945,
-                220,
-                710,
-                440,
-                1180,
-                0,
-                vec![NodeIndex::Room3 as usize, NodeIndex::Node5 as usize],
-            ),
-            Node::new(
-                "Room 1".into(),
-                7,
-                1405,
-                1500,
-                1170,
-                1930,
-                1920,
-                1380,
-                vec![NodeIndex::Node3 as usize],
-            ),
-            Node::new(
-                "Room 2".into(),
-                8, 
-                235,
-                1800,
-                0,
-                2400,
-                700,
-                1490,
-                vec![NodeIndex::Node4 as usize],
-            ),
-            Node::new(
-                "Room 3".into(),
-                9,
-                500,
-                220,
-                0,
-                1020,
-                700,
-                0,
-                vec![NodeIndex::Node6 as usize],
-            ),
-            Node::new(
-                "Room 4".into(),
-                10,
-                1400,
-                670,
-                1180,
-                900,
-                2400,
-                0,
-                vec![NodeIndex::Node5 as usize],
-            ),
         ];
+
+        // Creating the nodes we need to visit according to where start.
+
     }
 
-    pub fn get_current_node(self, x: i32, y: i32) -> i32 {
+    pub fn get_current_node(&self, x: i32, y: i32) -> usize {
         for i in 0..NodeIndex::Last as usize {
-            if (self.nodes[i].in_bounds(x, y)) {
-                return i as i32;
+            if self.nodes[i].in_bounds(x, y) {
+                return i;
             }
         }
-        return NodeIndex::Last as i32;
+        return NodeIndex::Last as usize;
     }
 
-    pub fn get_path(&mut self, start_node : usize, end_node : usize) -> Vec<Point> {
+    pub fn get_path(&mut self, start_node : usize, end_node : usize) -> Vec<usize> {
 
         let mut processing_queue: Queue<usize> = Queue::new();
-        let mut path: Vec<Point> = vec![];
+        let mut path: Vec<usize> = vec![];
 
+        // Reset the previous nodes.
         self.reset_visited();
 
         processing_queue.queue(start_node);
@@ -277,12 +206,12 @@ impl NodeMap {
         while !processing_queue.is_empty() {
             current_node = processing_queue.dequeue().unwrap();
             if current_node == end_node {
-                recreate_path(start_node, end_node, path);
+                self.recreate_path(start_node, end_node, &mut path);
                 return path;
             }
             else {
-                for i in 0..neighbours.len() {
-                    if (!self.nodes[i].visited) {
+                for i in 0..self.nodes[current_node].neighbours.len() {
+                    if !self.nodes[i].visited {
                         self.nodes[i].visited = true;
                         self.nodes[i].previous = current_node;
                         processing_queue.queue(i);
@@ -291,7 +220,7 @@ impl NodeMap {
             }
 
         }
-        path.append(Point(self.nodes[start_node].node_point.x, self.nodes[start_node].node_point.y);
+        path.push(start_node);
         return path;
     }
 
@@ -301,6 +230,59 @@ impl NodeMap {
             self.nodes[i].visited = false;
         }
     }
+
+    pub fn recreate_path(&mut self, start_node : usize, end_node : usize, path : &mut Vec<usize>)
+    {
+        let mut backward_path: Vec<usize> = vec![];
+        let mut current_node : usize = end_node;
+
+        while current_node != start_node {
+            backward_path.push(current_node);
+            current_node = self.nodes[current_node].previous;
+        }
+        backward_path.push(current_node);
+
+        for i in (0..backward_path.len()).rev() {
+            path.push(5);
+        }
+    }
+
+    pub fn create_global_path(&mut self,) {
+        self.global_path = vec![];
+        let mut current_path : Vec<usize> = vec![];
+
+        let start_room : usize = self.get_current_node(self.start_x, self.start_y);
+        let mut previous_visited_room : usize = start_room;
+        let mut scan_settings : ScanSettings;
+
+        for room_index in 0..AMOUNT_OF_ROOMS {
+            current_path = self.get_path(previous_visited_room, 
+                                         ROOM_SEARCH_ORDER[start_room][room_index]);
+            
+            for current_node in current_path {
+                // If the node should be scanned and it has not been scanned, then it should be scanned.
+                if self.nodes[current_node].scan_settings == ScanSettings::Scan &&
+                   !self.nodes[current_node].scanned {
+                    scan_settings = ScanSettings::Scan;
+                }
+                else {
+                    scan_settings = ScanSettings::NoScan;
+                }
+                self.nodes[current_node].scanned = true;
+
+
+                self.global_path.push(PathPoint::new(self.nodes[current_node].node_point.x,
+                                                     self.nodes[current_node].node_point.y,
+                                                     scan_settings,
+                                                     self.nodes[current_node].scan_angle))
+            }
+        }
+
+        let last_index = self.global_path.len() - 1;
+        self.global_path[last_index].scan_settings = ScanSettings::Done;
+
+    }
+
 }
 
 fn main() {}
