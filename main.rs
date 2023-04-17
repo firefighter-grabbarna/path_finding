@@ -1,24 +1,60 @@
 use queue::*;
 
-const ROOM_SEARCH_ORDER : [[usize ; 3] ; 4] = [[1, 2, 3],   //room0
-                                               [1, 2, 3],   //room1
-                                               [1, 2, 3],   //room2
-                                               [1, 2, 3]];  //room3
+const ROOM_SEARCH_ORDER : [[usize ; 3] ; 4] = [[3, 2, 1],   //room0
+                                               [2, 3, 0],   //room1
+                                               [1, 3, 0],   //room2
+                                               [0, 2, 1]];  //room3
 
 const AMOUNT_OF_ROOMS : usize = 3;
-
+/*
+                             .-----.
+                            /7  .  (
+                           /   .-.  \
+                          /   /   \  \
+                         / `  )   (   )
+                        / `   )   ).  \
+                      .'  _.   \_/  . |
+     .--.           .' _.' )`.        |
+    (    `---...._.'   `---.'_)    ..  \
+     \            `----....___    `. \  |
+      `.           _ ----- _   `._  )/  |
+        `.       /"  \   /"  \`.  `._   |
+          `.    ((O)` ) ((O)` ) `.   `._\
+            `-- '`---'   `---' )  `.    `-.
+               /                  ` \      `-.
+             .'                      `.       `.
+            /                     `  ` `.       `-.
+     .--.   \ ===._____.======. `    `   `. .___.--`     .''''.
+    ' .` `-. `.                )`. `   ` ` \          .' . '  8)
+   (8  .  ` `-.`.               ( .  ` `  .`\      .'  '    ' /
+    \  `. `    `-.               ) ` .   ` ` \  .'   ' .  '  /
+     \ ` `.  ` . \`.    .--.     |  ` ) `   .``/   '  // .  /
+      `.  ``. .   \ \   .-- `.  (  ` /_   ` . / ' .  '/   .'
+        `. ` \  `  \ \  '-.   `-'  .'  `-.  `   .  .'/  .'
+          \ `.`.  ` \ \    ) /`._.`  n      `.  ` .  .'  /
+           |  `.`. . \ \  (.'       | |       `.   .'  .'
+        __/  .. \ \ ` ) \           | |          \.' .. \__
+ .-._.-'     '"  ) .-'   `.        0   0       (  '"     `-._.--.
+(_________.-====' / .' /\_)`--..__________..-- `====-. _________)
+                 (.'(.'
+*/
 enum NodeIndex {
-    Middle,
-    Node1,
-    Node2,
-    Node3,
-    Node4,
-    Node5,
-    Node6,
-    Room1,
-    Room2,
-    Room3,
-    Room4,
+    S0,
+    S1,
+    S2,
+    S3,
+    F0,
+    F1_0,
+    F1_1,
+    F2,
+    F3_0,
+    F3_1,
+    R0,
+    R1,
+    R2,
+    R3,
+    R4,
+    R5,
     Last,
 }
 
@@ -33,11 +69,11 @@ struct PathPoint {
     pub x : i32,
     pub y : i32,
     pub scan_settings : ScanSettings,
-    pub angle : f32,
+    pub angle : f64,
 }
 
 impl PathPoint {
-    fn new(x: i32, y:i32, scan_settings : ScanSettings, angle : f32) -> PathPoint {
+    fn new(x: i32, y:i32, scan_settings : ScanSettings, angle : f64) -> PathPoint {
         return PathPoint { x: x, y: y, scan_settings : scan_settings, angle : angle};
     }
 }
@@ -63,7 +99,7 @@ struct Node {
     pub index: usize,
     pub visited: bool,
     pub scan_settings: ScanSettings,
-    pub scan_angle: f32,
+    pub scan_angle: f64,
     pub scanned: bool,
 }
 
@@ -78,7 +114,7 @@ impl Node {
         low_right_x: i32,
         low_right_y: i32,
         scan_settings: ScanSettings,
-        scan_angle: f32,
+        scan_angle: f64,
         neighbours: Vec<usize>,
     ) -> Node {
         return Node {
@@ -125,10 +161,11 @@ impl Node {
     }
 
     pub fn in_bounds(&self, x: i32, y: i32) -> bool {
+        println!("{}, {} {} {} {}", self.name, self.bound_upp_left.x <= x, x <= self.bound_low_right.x, self.bound_upp_left.y <= y, y <= self.bound_upp_left.y);
         return self.bound_upp_left.x <= x
             && x <= self.bound_low_right.x
             && self.bound_upp_left.y <= y
-            && y <= self.bound_upp_left.y;
+            && y <= self.bound_low_right.y;
     }
 }
 
@@ -143,7 +180,7 @@ struct NodeMap {
 
 impl NodeMap {
     fn new(x: i32, y:i32) -> NodeMap {
-        return NodeMap {
+        let mut map = NodeMap {
             nodes: Vec::new(),
             rooms: Vec::new(),
             global_path: Vec::new(),
@@ -151,30 +188,284 @@ impl NodeMap {
             start_y: y,
             cur_path_index: 0,
         };
+        map.init();
+        return map;
     }
 
     fn init(&mut self) {
         self.global_path = vec![];
         //Creating the nodes
         self.nodes = vec![
-            Node::new(
-                "Middle".into(),
+            Node::new( //done
+                "s0".into(),
+                NodeIndex::S0 as usize,
+                180,
+                2100,
                 0,
-                950,
-                1180,
+                1370,
+                720,
+                2400,
+                ScanSettings::Scan,
+                300_f64.to_radians(),
+                vec![
+                    NodeIndex::F0 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "s1".into(),
+                NodeIndex::S1 as usize,
+                180,
+                300,
+                0,
+                0,
+                700,
+                900,
+                ScanSettings::Scan,
+                55_f64.to_radians(),
+                vec![
+                    NodeIndex::F1_1 as usize,
+                ]
+            ),
+            Node::new(//done
+                "s2".into(),
+                NodeIndex::S2 as usize,
+                1300,
+                630,
+                1170,
+                470,
+                1900,
+                1020,
+                ScanSettings::Scan,
+                40_f64.to_radians(),
+                vec![
+                    NodeIndex::F2 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "s3".into(),
+                NodeIndex::S3 as usize,
+                2080,
+                1700,
+                1190,
+                1490,
+                2400,
+                2400,
+                ScanSettings::Scan,
+                150_f64.to_radians(),
+                vec![
+                    NodeIndex::F3_1 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "f0".into(),
+                NodeIndex::F0 as usize,
+                800,
+                2100,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::Scan,
+                180_f64.to_radians(),
+                vec![
+                    NodeIndex::R5 as usize,
+                    NodeIndex::S0 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "f1_0".into(),
+                NodeIndex::F1_0 as usize,
+                180,
+                2100,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::Scan,
+                270_f64.to_radians(),
+                vec![
+                    NodeIndex::R0 as usize,
+                    NodeIndex::F1_1 as usize,   
+                ]
+
+            ),
+            Node::new(
+                "f1_1".into(),
+                6,
+                180,
+                2100,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::Scan,
+                270_f64.to_radians(),
+                vec![
+                    NodeIndex::F1_0 as usize,
+                    NodeIndex::S1 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "f2".into(),
+                NodeIndex::F2 as usize,
+                1300,
+                1150,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::Scan,
+                270_f64.to_radians(),
+                vec![
+                    NodeIndex::R3 as usize,
+                    NodeIndex::S2 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "f3_0".into(),
+                NodeIndex::F3_1 as usize,
+                1050,
+                1700,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::Scan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::R4 as usize,
+                    NodeIndex::F3_1 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "f3_1".into(),
+                NodeIndex::F3_1 as usize,
+                1580,
+                1700,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::Scan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::F3_0 as usize,
+                    NodeIndex::S3 as usize,
+                ]
+
+            ),
+            Node::new( //done
+                "r0".into(),
+                NodeIndex::R0 as usize,
+                180,
+                1150,
                 -1,
                 -1,
                 -1,
                 -1,
                 ScanSettings::NoScan,
-                0.0,
+                300_f64.to_radians(),
                 vec![
-                    NodeIndex::Node1 as usize,
-                    NodeIndex::Node3 as usize,
-                    NodeIndex::Node4 as usize,
-                    NodeIndex::Node5 as usize,
-                ],
+                    NodeIndex::F1_0 as usize,
+                    NodeIndex::R1 as usize,
+                ]
+
             ),
+            Node::new( //done
+                "r1".into(),
+                NodeIndex::R1 as usize,
+                960,
+                1150,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::NoScan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::R0 as usize,
+                    NodeIndex::R2 as usize,
+                ]
+
+            ),
+            Node::new(//done
+                "r2".into(),
+                NodeIndex::R2 as usize,
+                960,
+                1300,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::NoScan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::R1 as usize,
+                    NodeIndex::R3 as usize,
+                    NodeIndex::R4 as usize,
+                ]
+
+            ),
+            Node::new( //done
+                "r3".into(),
+                NodeIndex::R3 as usize,
+                1300,
+                1300,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::NoScan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::R2 as usize,
+                    NodeIndex::F2 as usize,
+                ]
+
+            ),
+            Node::new( //Done
+                "r4".into(),
+                NodeIndex::R4 as usize,
+                960,
+                1700,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::NoScan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::R2 as usize,
+                    NodeIndex::R5 as usize,
+                    NodeIndex::F3_0 as usize,
+                ]
+
+            ),
+            Node::new( //
+                "r5".into(),
+                NodeIndex::R5 as usize,
+                960,
+                1300,
+                -1,
+                -1,
+                -1,
+                -1,
+                ScanSettings::NoScan,
+                0_f64.to_radians(),
+                vec![
+                    NodeIndex::R4 as usize,
+                    NodeIndex::F0 as usize,
+                ]
+
+            ),
+
         ];
 
         // Creating the nodes we need to visit according to where start.
@@ -183,6 +474,7 @@ impl NodeMap {
 
     pub fn get_current_node(&self, x: i32, y: i32) -> usize {
         for i in 0..NodeIndex::Last as usize {
+
             if self.nodes[i].in_bounds(x, y) {
                 return i;
             }
@@ -198,23 +490,27 @@ impl NodeMap {
         // Reset the previous nodes.
         self.reset_visited();
 
-        processing_queue.queue(start_node);
+        let _ = processing_queue.queue(start_node);
         self.nodes[start_node].visited = true;
 
         let mut current_node: usize;
-
+        println!("start_node = {}, end_node = {}", start_node, end_node);
         while !processing_queue.is_empty() {
+            //println!("len of the queue = {}", processing_queue.len());
             current_node = processing_queue.dequeue().unwrap();
+            println!("current_node = {}", self.nodes[current_node].name);
             if current_node == end_node {
                 self.recreate_path(start_node, end_node, &mut path);
                 return path;
             }
             else {
+                let mut neighbours: usize;
                 for i in 0..self.nodes[current_node].neighbours.len() {
-                    if !self.nodes[i].visited {
-                        self.nodes[i].visited = true;
-                        self.nodes[i].previous = current_node;
-                        processing_queue.queue(i);
+                    neighbours = self.nodes[current_node].neighbours[i];
+                    if !self.nodes[neighbours].visited {
+                        self.nodes[neighbours].visited = true;
+                        self.nodes[neighbours].previous = current_node;
+                        let _ = processing_queue.queue(neighbours);
                     }
                 }
             }
@@ -223,7 +519,7 @@ impl NodeMap {
         path.push(start_node);
         return path;
     }
-
+    //removed herobrine
     pub fn reset_visited(&mut self) 
     {
         for i in 0..NodeIndex::Last as usize {
@@ -243,7 +539,7 @@ impl NodeMap {
         backward_path.push(current_node);
 
         for i in (0..backward_path.len()).rev() {
-            path.push(5);
+            path.push(backward_path[i]);
         }
     }
 
@@ -255,10 +551,15 @@ impl NodeMap {
         let mut previous_visited_room : usize = start_room;
         let mut scan_settings : ScanSettings;
 
+        //Go throught all the rooms and find the paths to them from the previous visited room.
         for room_index in 0..AMOUNT_OF_ROOMS {
+            println!("start_node: {}, end_node:{}", previous_visited_room, ROOM_SEARCH_ORDER[start_room][room_index]);
             current_path = self.get_path(previous_visited_room, 
                                          ROOM_SEARCH_ORDER[start_room][room_index]);
-            
+
+            for i in 0..current_path.len() {
+            println!("{:?}", self.nodes[current_path[i]].name);
+            }
             for current_node in current_path {
                 // If the node should be scanned and it has not been scanned, then it should be scanned.
                 if self.nodes[current_node].scan_settings == ScanSettings::Scan &&
@@ -276,6 +577,7 @@ impl NodeMap {
                                                      scan_settings,
                                                      self.nodes[current_node].scan_angle))
             }
+            previous_visited_room = ROOM_SEARCH_ORDER[start_room][room_index]
         }
 
         let last_index = self.global_path.len() - 1;
@@ -283,6 +585,59 @@ impl NodeMap {
 
     }
 
+    pub fn get_next_path(&mut self) -> &PathPoint{
+        let ret = &self.global_path[self.cur_path_index as usize];
+        self.cur_path_index += 1;
+        return ret;
+    }
+
+}
+fn main() {
+    let mut node_map : NodeMap = NodeMap::new(180, 299);
+    node_map.create_global_path();
+    let mut path_point: &PathPoint;
+    for i in 0..100 {
+    path_point = node_map.get_next_path();
+    println!("{} {}", path_point.x, path_point.y) 
+    }
 }
 
-fn main() {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//oscar was here
