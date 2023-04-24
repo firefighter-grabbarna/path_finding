@@ -6,6 +6,8 @@ const ROOM_SEARCH_ORDER : [[usize ; 3] ; 4] = [[3, 2, 1],   //room0
                                                [0, 2, 1]];  //room3
 
 const AMOUNT_OF_ROOMS : usize = 3;
+
+#[derive(Clone, Copy, PartialEq)]
 enum NodeIndex {
     S0,
     S1,
@@ -26,14 +28,14 @@ enum NodeIndex {
     Last,
 }
 
-#[derive(PartialEq)]
-enum ScanSettings {
+#[derive(Clone, Copy, PartialEq)]
+pub enum ScanSettings {
     NoScan,
     Scan,
     Done,
 }
 
-struct PathPoint {
+pub struct PathPoint {
     pub x : i32,
     pub y : i32,
     pub scan_settings : ScanSettings,
@@ -41,23 +43,23 @@ struct PathPoint {
 }
 
 impl PathPoint {
-    fn new(x: i32, y:i32, scan_settings : ScanSettings, angle : f64) -> PathPoint {
+    pub fn new(x: i32, y:i32, scan_settings : ScanSettings, angle : f64) -> PathPoint {
         return PathPoint { x: x, y: y, scan_settings : scan_settings, angle : angle};
     }
 }
 
-struct Point {
+pub struct Point {
     pub x: i32,
     pub y: i32,
 }
 
 impl Point {
-    fn new(x: i32, y: i32) -> Point {
+    pub fn new(x: i32, y: i32) -> Point {
         return Point { x: x, y: y };
     }
 }
 
-struct Node {
+pub struct Node {
     pub node_point: Point,
     pub bound_upp_left: Point,
     pub bound_low_right: Point,
@@ -137,7 +139,7 @@ impl Node {
     }
 }
 
-struct NodeMap {
+pub struct NodeMap {
     nodes: Vec<Node>,
     rooms: Vec<usize>,
     global_path: Vec<PathPoint>,
@@ -147,7 +149,7 @@ struct NodeMap {
 }
 
 impl NodeMap {
-    fn new(x: i32, y:i32) -> NodeMap {
+    pub fn new(x: i32, y:i32) -> NodeMap {
         let mut map = NodeMap {
             nodes: Vec::new(),
             rooms: Vec::new(),
@@ -600,21 +602,21 @@ fn main() {
     for i in 0..node_map.global_path.len() {
         path_point = node_map.get_next_path();
         println!("{} {}", path_point.x, path_point.y);
-        if i == 10 {
-            println!("===========================");
-            println!("Going home :)");
-            println!("===========================");
-            node_map.go_home();
-            break;
-        }
+        // if i == 10 {
+            // println!("===========================");
+            // println!("Going home :)");
+            // println!("===========================");
+            // node_map.go_home();
+            // break;
+        // }
     }
-    println!("===========================");
-    println!("Going home :)");
-    println!("===========================");
-    for i in 0..node_map.global_path.len() {
-        path_point = node_map.get_next_path();
-        println!("{} {}", path_point.x, path_point.y);
-    }
+    // println!("===========================");
+    // println!("Going home :)");
+    // println!("===========================");
+    // for i in 0..node_map.global_path.len() {
+        // path_point = node_map.get_next_path();
+        // println!("{} {}", path_point.x, path_point.y);
+    // }
 }
 
 
