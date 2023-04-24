@@ -487,7 +487,7 @@ impl NodeMap {
         path.push(start_node);
         return path;
     }
-    //removed herobrine
+
     pub fn reset_visited(&mut self) 
     {
         for i in 0..NodeIndex::Last as usize {
@@ -508,6 +508,39 @@ impl NodeMap {
 
         for i in (0..backward_path.len()).rev() {
             path.push(backward_path[i]);
+        }
+    }
+
+    pub fn go_home(&mut self,) {
+        let current_x = self.global_path[self.cur_path_index as usize].x;
+        let current_y = self.global_path[self.cur_path_index as usize].y;
+        let mut current_node_index: usize = 0;
+        let mut end_node_index: usize = 0;
+
+        self.global_path = vec![];
+        self.cur_path_index = 0;
+
+        for node_index in 0..self.nodes.len() {
+            if self.nodes[node_index].in_bounds(current_x, current_y) {
+                current_node_index = node_index;
+            }
+        }
+
+        for node_index in 0..self.nodes.len() {
+            if self.nodes[node_index].in_bounds(self.start_x, self.start_y) {
+                end_node_index = node_index;
+            }
+        }
+
+        let home_path: Vec<usize> = self.get_path(current_node_index, end_node_index);
+        println!("the lenght of the path is {} from {} to {}", home_path.len(), current_node_index, end_node_index);
+        for current_node in home_path {
+            println!("{:?}", self.nodes[current_node].name);
+            // If the node should be scanned and it has not been scanned, then it should be scanned.
+            self.global_path.push(PathPoint::new(self.nodes[current_node].node_point.x,
+                                                    self.nodes[current_node].node_point.y,
+                                                    ScanSettings::NoScan,
+                                                    self.nodes[current_node].scan_angle))
         }
     }
 
@@ -561,12 +594,26 @@ impl NodeMap {
 
 }
 fn main() {
-    let mut node_map : NodeMap = NodeMap::new(180, 299);
+    let mut node_map : NodeMap = NodeMap::new(1191, 1491);
     node_map.create_global_path();
     let mut path_point: &PathPoint;
-    for i in 0..100 {
-    path_point = node_map.get_next_path();
-    println!("{} {}", path_point.x, path_point.y) 
+    for i in 0..node_map.global_path.len() {
+        path_point = node_map.get_next_path();
+        println!("{} {}", path_point.x, path_point.y);
+        if i == 10 {
+            println!("===========================");
+            println!("Going home :)");
+            println!("===========================");
+            node_map.go_home();
+            break;
+        }
+    }
+    println!("===========================");
+    println!("Going home :)");
+    println!("===========================");
+    for i in 0..node_map.global_path.len() {
+        path_point = node_map.get_next_path();
+        println!("{} {}", path_point.x, path_point.y);
     }
 }
 
